@@ -32,10 +32,10 @@ explicitly; do not silently skip it or pretend its guidance was followed.
   behavior for mutating Kubernetes workflows.
 - Add or update focused tests under `tests/` for behavior and public contracts.
   Use `uv` for environment and package management.
-- Keep generated API documentation source-driven: add docstrings for public
-  modules, classes, functions, and methods; do not maintain duplicate symbol
-  inventories in READMEs. Update module `__all__` when the supported surface
-  changes.
+- Keep generated API documentation source-driven: document public modules,
+  classes, functions, and methods in source; this project's MkDocs configuration
+  uses Google-style docstrings. Do not maintain duplicate symbol inventories in
+  READMEs. Update module `__all__` when the supported surface changes.
 - For public API changes, pass the Ruff docstring rules and strict MkDocs build
   enforced by `.github/workflows/docs.yml`.
 
