@@ -1,0 +1,88 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pnutils"
+dynamic = ["version"]
+description = "Utility modules for Kubernetes, shell scripting and X.509 certificates."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Prasad Nadig" }]
+keywords = ["utils", "kubernetes", "kubectl", "secrets", "tls", "x509"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = []
+
+# Runtime install choices:
+# - Base install: standard-library helpers; no third-party runtime dependencies.
+# - k8s extra: official Kubernetes Python client for the client backend.
+# - all extra: convenience group containing every runtime extra (currently k8s).
+# Examples: `uv add pnutils`, `uv add "pnutils[k8s]"`, or `uv add "pnutils[all]"`.
+[project.optional-dependencies]
+# Install when using the Python Kubernetes client; kubectl-only workflows do not need it.
+k8s = ["kubernetes>=29.0.0"]
+# Convenience choice for consumers that want all optional runtime integrations.
+all = ["pnutils[k8s]"]
+# Development-only test, lint, typing, and distribution-build tools.
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "build>=1.2",
+    "twine>=5.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/prasadnadig/pnutils"
+Repository = "https://github.com/prasadnadig/pnutils"
+Issues = "https://github.com/prasadnadig/pnutils/issues"
+
+[project.scripts]
+pnutils-k8s = "pnutils.k8s.cli:main"
+
+[tool.hatch.version]
+path = "src/pnutils/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pnutils"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/pnutils", "tests", "docs", "mkdocs.yml", "README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.9"
+packages = ["pnutils"]
+mypy_path = "src"
+ignore_missing_imports = true
+
+[dependency-groups]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocstrings[python]>=0.27",
+]

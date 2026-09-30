@@ -1,0 +1,35 @@
+site_name: pnutils API Reference
+site_url: https://prasadnadig.github.io/pnutils/
+repo_url: https://github.com/prasadnadig/pnutils
+docs_dir: docs
+site_dir: site
+strict: true
+
+nav:
+  - Overview: index.md
+  - API Reference:
+      - Kubernetes: api/k8s.md
+      - Script Helpers: api/scripts.md
+      - X.509 Certificates: api/ssl_certs.md
+      - Exceptions: api/exceptions.md
+      - Kubernetes CLI: api/cli.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            docstring_style: google
+            filters:
+              - "!^_"
+            members_order: source
+            show_if_no_docstring: true
+            show_root_heading: true
+            show_signature_annotations: true
+            show_source: false
+
+theme:
+  name: readthedocs
