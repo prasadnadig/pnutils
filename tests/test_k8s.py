@@ -357,6 +357,27 @@ def test_kubectl_backend_uses_tls_flags(monkeypatch):
     assert seen["apply"] == (True, "pnutils")
 
 
+def test_kubectl_backend_preserves_non_opaque_secret_type(monkeypatch):
+    seen: dict[str, list[str]] = {}
+
+    def fake_render(args, binary=None):
+        seen["args"] = list(args)
+        return "apiVersion: v1\nkind: Secret\n"
+
+    monkeypatch.setattr(kubectl, "render_manifest", fake_render)
+    monkeypatch.setattr(
+        kubectl, "apply_manifest", lambda *a, **k: "secret/pull applied"
+    )
+
+    # kubectl would otherwise default this to Opaque and kubelet would ignore it.
+    spec = secrets.SecretSpec(
+        "pull", "apps", "kubernetes.io/dockerconfigjson", {".dockerconfigjson": "{}"}
+    )
+    secrets.apply_secret(spec, backend="kubectl")
+
+    assert "--type=kubernetes.io/dockerconfigjson" in seen["args"]
+
+
 def test_kubectl_backend_cleans_secret_files_when_render_fails(tmp_path, monkeypatch):
     staging_dir = tmp_path / "pnutils-secret-test"
 
@@ -393,6 +414,28 @@ def test_apply_secret_applies_when_confirmed(monkeypatch):
 
     result = secrets.apply_secret(spec, confirm=lambda target, spec: True, backend="client")
     assert result == "secret/n applied"
+
+
+def test_batch_confirmation_lists_every_secret_once(monkeypatch, capsys):
+    class FakeTarget:
+        def lines(self):
+            return ["cluster: demo", "server: https://kubernetes.example"]
+
+    specs = [
+        secrets.SecretSpec.generic("one", "team-a", {"token": "a"}),
+        secrets.SecretSpec.generic("two", "team-a", {"token": "b"}),
+    ]
+    monkeypatch.setattr(secrets, "get_cluster_target", lambda backend="auto": FakeTarget())
+    monkeypatch.setattr("builtins.input", lambda prompt: "yes")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+
+    secrets.confirm_secrets(specs, backend="kubectl", notes=("restarts workloads",))
+
+    out = capsys.readouterr().out
+    assert "cluster: demo" in out
+    assert "Secret one" in out
+    assert "Secret two" in out
+    assert "restarts workloads" in out
 
 
 def test_cli_tls_preview_defers_certificate_generation(monkeypatch, capsys):

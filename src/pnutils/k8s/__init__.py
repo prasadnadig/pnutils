@@ -12,6 +12,9 @@ from pnutils.k8s.kubectl import ClusterTarget
 from pnutils.k8s.secrets import (
     SecretSpec,
     apply_secret,
+    apply_secrets,
+    confirm_secrets,
+    describe_backend,
     get_cluster_target,
     secret_data_from_env,
 )
@@ -28,6 +31,9 @@ __all__ = [
     "KubernetesClient",
     "SecretSpec",
     "apply_secret",
+    "apply_secrets",
+    "confirm_secrets",
+    "describe_backend",
     "generate_service_certificate",
     "get_cluster_target",
     "load_certificate_pair",

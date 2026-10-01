@@ -20,8 +20,9 @@ about a path, delete it and rotate the credential or reissue the certificate.
 from __future__ import annotations
 
 import os
+import sys
 from base64 import b64encode
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from importlib.util import find_spec
 from shutil import which
@@ -31,12 +32,21 @@ from pnutils.exceptions import (
     ConfirmationDeclined,
     KubeApiError,
     MissingDependencyError,
+    PnUtilsError,
     ValidationError,
 )
 from pnutils.k8s.kubectl import ClusterTarget
 from pnutils.k8s.tls import CertificatePair
 
-__all__ = ["SecretSpec", "apply_secret", "get_cluster_target", "secret_data_from_env"]
+__all__ = [
+    "SecretSpec",
+    "apply_secret",
+    "apply_secrets",
+    "confirm_secrets",
+    "describe_backend",
+    "get_cluster_target",
+    "secret_data_from_env",
+]
 
 _BACKENDS = ("client", "kubectl")
 _GENERIC_TYPE = "Opaque"
@@ -52,7 +62,9 @@ class SecretSpec:
     """Desired Secret contents, ready to apply to a cluster.
 
     ``data`` contains plaintext values and is excluded from ``repr``. Use the
-    named constructors to create generic or TLS Secrets.
+    named constructors for Opaque and TLS Secrets; construct the dataclass
+    directly for any other Kubernetes Secret type, such as
+    ``kubernetes.io/dockerconfigjson``. Both backends preserve ``secret_type``.
 
     Attributes:
         name: Kubernetes Secret name.
@@ -257,9 +269,107 @@ def _apply_with_kubectl(spec: SecretSpec) -> str:
         if kind == "tls":
             args += [f"--cert={paths['tls.crt']}", f"--key={paths['tls.key']}"]
         else:
+            # kubectl defaults a generic Secret to Opaque, which would silently
+            # discard types such as kubernetes.io/dockerconfigjson.
+            args.append(f"--type={spec.secret_type}")
             args += [f"--from-file={key}={path}" for key, path in paths.items()]
         manifest = render_manifest(args)
     return apply_manifest(manifest, server_side=True, field_manager=_FIELD_MANAGER)
+
+
+def describe_backend(backend: str) -> str:
+    """Describe a pnutils backend in terms of where secret values travel.
+
+    Args:
+        backend: ``"auto"``, ``"client"``, or ``"kubectl"``.
+
+    Returns:
+        A one-line description naming the exposure the operator is accepting.
+    """
+    if backend == "client":
+        return "Kubernetes API (values go straight into the request body)"
+    if backend == "kubectl":
+        return "kubectl binary (values staged in 0600 files, then shredded)"
+    return "auto (prefers the Kubernetes API, falls back to kubectl)"
+
+
+def confirm_secrets(
+    specs: Sequence[SecretSpec],
+    force: bool = False,
+    backend: str = "auto",
+    notes: Iterable[str] = (),
+) -> None:
+    """Show the target cluster and every pending Secret, then require one ``yes``.
+
+    Reads the selected kubeconfig context to identify the cluster; it does not
+    contact the Kubernetes API and applies nothing. Secret values are never
+    printed, only names, namespaces, types, and keys.
+
+    Args:
+        specs: Every Secret the caller is about to apply, in apply order.
+        force: Skip the prompt for trusted automation. Only ever pass the value
+            of an explicit ``--force`` flag that itself required ``--apply``.
+        backend: Backend that will perform the apply, shown to the operator so
+            the disclosure in :func:`describe_backend` is part of the decision.
+        notes: Extra consequence lines to display, such as which existing keys
+            will be replaced or which workloads need a restart afterwards.
+
+    Raises:
+        ConfirmationDeclined: If the operator answers anything but ``yes``.
+        PnUtilsError: If confirmation is required but no terminal is attached,
+            which is the case a forgotten ``--force`` must fail on rather than
+            silently proceed through.
+    """
+    target = get_cluster_target(backend)
+
+    print("\nConfirmation required before applying:")
+    print("Target Kubernetes cluster:")
+    for line in target.lines():
+        print(f"  {line}")
+    print(f"  backend: {describe_backend(backend)}")
+
+    print("\nThe following Kubernetes objects will be created or replaced:")
+    for spec in specs:
+        for line in spec.summary():
+            print(f"  {line}")
+    for note in notes:
+        print(f"  {note}")
+
+    if force:
+        print("\n--force was provided; confirmation skipped.")
+        return
+
+    if not sys.stdin.isatty():
+        raise PnUtilsError("--apply needs an interactive terminal; use --force in automation")
+
+    if input('\nType exactly "yes" to apply these changes: ').strip() != "yes":
+        raise ConfirmationDeclined("aborted; nothing was applied")
+
+
+def apply_secrets(specs: Sequence[SecretSpec], backend: str = "auto") -> None:
+    """Apply an already-confirmed batch of Secrets, reporting progress per object.
+
+    Call :func:`confirm_secrets` first. This applies without prompting, so the
+    caller is responsible for having obtained consent for the whole batch.
+
+    Args:
+        specs: Secrets to apply, in order.
+        backend: Backend to apply with; must match the one passed to
+            :func:`confirm_secrets` so the operator approved what actually runs.
+
+    Raises:
+        PnUtilsError: Propagated from the first Secret that fails to apply.
+    """
+    total = len(specs)
+    for index, spec in enumerate(specs, start=1):
+        print(f"\n[{index}/{total}] {spec.name} -> namespace {spec.namespace}")
+        try:
+            print(apply_secret(spec, backend=backend))
+        except PnUtilsError:
+            remaining = total - index
+            if remaining:
+                print(f"error: {remaining} Secret(s) were not attempted", file=sys.stderr)
+            raise
 
 
 def apply_secret(
