@@ -1,7 +1,7 @@
 # pnutils
 
 A grab-bag of Python utility modules, one submodule per context: Kubernetes,
-shell scripting, and X.509 certificates.
+shell scripting, Linode DNS, and X.509 certificates.
 
 Requires Python 3.9 or newer. CI tests Python 3.9 through 3.14.
 
@@ -10,6 +10,7 @@ Requires Python 3.9 or newer. CI tests Python 3.9 through 3.14.
 ```bash
 uv add pnutils                   # core, zero dependencies
 uv add 'pnutils[k8s]'            # + kubernetes client
+uv add 'pnutils[linode]'         # + YAML input for preview-first DNS utilities
 uv add 'pnutils[all]'            # all optional runtime integrations
 ```
 
@@ -18,6 +19,7 @@ The equivalent pip installs are:
 ```bash
 pip install pnutils              # core, zero dependencies
 pip install 'pnutils[k8s]'       # + kubernetes client
+pip install 'pnutils[linode]'    # + YAML input for DNS utilities
 pip install 'pnutils[all]'       # everything
 ```
 
@@ -68,6 +70,8 @@ dependency you have not installed.
 
 ## Module guides
 
+- [Linode DNS (`pnutils.linode`)](src/pnutils/linode/README.md): fetch raw records,
+    validate YAML/JSON intent, review scoped changes, and explicitly approve apply.
 - [Kubernetes (`pnutils.k8s`)](src/pnutils/k8s/README.md): cluster reads,
     Secret specifications and apply, TLS-for-Service helpers, and the `pnutils-k8s`
     command.

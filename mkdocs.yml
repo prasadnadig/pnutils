@@ -9,6 +9,7 @@ nav:
   - Overview: index.md
   - API Reference:
       - Kubernetes: api/k8s.md
+      - Linode DNS: api/linode.md
       - Script Helpers: api/scripts.md
       - X.509 Certificates: api/ssl_certs.md
       - Exceptions: api/exceptions.md

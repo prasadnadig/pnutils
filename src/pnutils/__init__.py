@@ -14,6 +14,7 @@ from pnutils.__about__ import __version__
 
 _SUBMODULES = (
     "k8s",
+    "linode",
     "scripts",
     "ssl_certs",
 )
@@ -22,6 +23,7 @@ __all__ = [*_SUBMODULES, "__version__"]
 
 if TYPE_CHECKING:
     from pnutils import k8s as k8s
+    from pnutils import linode as linode
     from pnutils import scripts as scripts
     from pnutils import ssl_certs as ssl_certs
 

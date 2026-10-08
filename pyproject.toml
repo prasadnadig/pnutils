@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "pnutils"
 dynamic = ["version"]
-description = "Utility modules for Kubernetes, shell scripting and X.509 certificates."
+description = "Utility modules for Kubernetes, Linode DNS, scripting and X.509 certificates."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -30,13 +30,15 @@ dependencies = []
 # Runtime install choices:
 # - Base install: standard-library helpers; no third-party runtime dependencies.
 # - k8s extra: official Kubernetes Python client for the client backend.
-# - all extra: convenience group containing every runtime extra (currently k8s).
+# - linode extra: YAML input for Linode DNS tools; JSON and API transport use the stdlib.
+# - all extra: convenience group containing every runtime extra.
 # Examples: `uv add pnutils`, `uv add "pnutils[k8s]"`, or `uv add "pnutils[all]"`.
 [project.optional-dependencies]
 # Install when using the Python Kubernetes client; kubectl-only workflows do not need it.
 k8s = ["kubernetes>=29.0.0"]
+linode = ["PyYAML>=6.0"]
 # Convenience choice for consumers that want all optional runtime integrations.
-all = ["pnutils[k8s]"]
+all = ["pnutils[k8s,linode]"]
 # Development-only test, lint, typing, and distribution-build tools.
 dev = [
     "pytest>=8.0",
@@ -54,6 +56,7 @@ Issues = "https://github.com/prasadnadig/pnutils/issues"
 
 [project.scripts]
 pnutils-k8s = "pnutils.k8s.cli:main"
+pnutils-linode = "pnutils.linode.cli:main"
 
 [tool.hatch.version]
 path = "src/pnutils/__about__.py"
